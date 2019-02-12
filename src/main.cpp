@@ -50,7 +50,7 @@ int main()
         int iLowS = 51; 
         int min_hist = 10;
         int max_hist = 4000;
-        float percentile = 50.0 / 100.0;
+        float percentile = 40.0 / 100.0;
 
 
 
@@ -64,7 +64,7 @@ int main()
 
 
 
-        int iLowV = 33;
+        int iLowV = 8;
 
         int iHighV = 255;
         
@@ -664,65 +664,94 @@ RectIndex++;
        cout << "Final rightmost x point" << RightRectCornersX[RightOutermostCornerIndex];
 //END OF LOOP FIND OUTERMOST POINTS
 //***********************************************************
+        int LeftRectTopY = RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexLeft].RectCY - (RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexLeft].RectLength / 1.5);
+        int LeftRectBottomY = RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexLeft].RectCY + (RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexLeft].RectLength / 1.5);
+        int RightRectTopY = RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexRight].RectCY - (RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexRight].RectLength / 1.5);
+        int RightRectBottomY = RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexRight].RectCY + (RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexRight].RectLength / 1.5);
 
-        Rect RightDepthRegion(RightRectCornersX[RightOutermostCornerIndex] + RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexRight].RectWidth / 8, 
-            RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexRight].RectCY - (RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexRight].RectLength / 1.8),                   
-            (RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexRight].RectWidth / 1),
-             (RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexRight].RectLength * 1.2));
-    
-        Rect LeftDepthRegion(LeftRectCornersX[LeftOutermostCornerIndex] - RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexLeft].RectWidth / 1,
-            RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexLeft].RectCY - (RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexLeft].RectLength / 1.8),
-             (RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexLeft].RectWidth / 1), 
-             (RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexLeft].RectLength * 1.2));
+        if  ((
+            (LeftRectCornersX[LeftOutermostCornerIndex] - RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexLeft].RectWidth / 1) > 10 
+            && (RightRectCornersX[RightOutermostCornerIndex] + RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexRight].RectWidth / 8) + (RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexRight].RectWidth / 1) < 635
+            )
+            
+            &&
 
-        //LeftDepthRegion = LeftDepthRegion  & Rect(0, 0, depth_mat.cols, depth_mat.rows);
+            
+            ((LeftRectTopY > 5 && RightRectTopY > 5) && (LeftRectBottomY < 475 && RightRectBottomY < 475))
+            ) 
 
-        //RightDepthRegion = RightDepthRegion  & Rect(0, 0, depth_mat.cols, depth_mat.rows);                                                                                                                 
+            {   
+           
+                        Rect RightDepthRegion(RightRectCornersX[RightOutermostCornerIndex] + RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexRight].RectWidth / 8, 
+                            RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexRight].RectCY - (RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexRight].RectLength / 1.5),                   
+                             (RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexRight].RectWidth / 1),
+                             (RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexRight].RectLength * 1.2));
+                    
+                        Rect LeftDepthRegion(LeftRectCornersX[LeftOutermostCornerIndex] - RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexLeft].RectWidth / 1,
+                            RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexLeft].RectCY - (RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexLeft].RectLength / 1.5),
+                             (RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexLeft].RectWidth / 1), 
+                             (RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexLeft].RectLength * 1.2));
 
-        //rectangle(boundingbox, LeftDepthRegion, cv::Scalar(0, 255, 0));
+                        //LeftDepthRegion = LeftDepthRegion  & Rect(0, 0, depth_mat.cols, depth_mat.rows);
 
-        //rectangle(boundingbox, RightDepthRegion, cv::Scalar(0, 255, 0));
+                        //RightDepthRegion = RightDepthRegion  & Rect(0, 0, depth_mat.cols, depth_mat.rows);                                                                                                                 
 
-        //rectangle(color, LeftDepthRegion, cv::Scalar(0, 255, 0));
+                        rectangle(boundingbox, LeftDepthRegion, cv::Scalar(0, 255, 0));
 
-        //rectangle(color, RightDepthRegion, cv::Scalar(0, 255, 0));
+                        rectangle(boundingbox, RightDepthRegion, cv::Scalar(0, 255, 0));
 
+                        //rectangle(color, LeftDepthRegion, cv::Scalar(0, 255, 0));
+
+                        //rectangle(color, RightDepthRegion, cv::Scalar(0, 255, 0));
+                       
+                        cout << LeftDepthRegion << endl;
+                        cout << RightDepthRegion << endl;
+                        cout << "parameters for left rect" << RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexLeft].RectLength << " " << RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexLeft].RectWidth << endl;
+                        cout << "parameters for right rect" << RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexRight].RectLength << " " << RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexRight].RectWidth << endl;
+                        
+                        
+                        Mat LeftDepthRegionMat = depth(LeftDepthRegion);
+                        Mat RightDepthRegionMat = depth(RightDepthRegion);
+                        
+                        //cv::Mat LeftDepthRegionMat = frameset.depth(LeftDepthRegion);
+
+                        //cv::Mat RightDepthRegionMat = frameset.depth(RightDepthRegion);
+                       // imshow("left region depth pls", depth);
+                        leftdepthregionhistogram.clear();
+                        rightdepthregionhistogram.clear();
+
+                        leftdepthregionhistogram.insert_image(LeftDepthRegionMat);
+                        rightdepthregionhistogram.insert_image(RightDepthRegionMat);
+                        leftdepth_hist.insert_image(LeftDepthRegionMat);
+
+                        unsigned short leftregionsdepthusinghistogram = leftdepth_hist.take_percentile(percentile);
+
+                        cout << "depth from histogram " << leftregionsdepthusinghistogram << endl;
+
+                        float LeftRegionDepthValues = (float)leftdepthregionhistogram.take_percentile(percentile);
+
+                        float RightRegionDepthValues = (float)rightdepthregionhistogram.take_percentile(percentile);
+                        
+                        cout << "Left Region Depth Histogram please work! " << LeftRegionDepthValues << endl;
+
+                        cout << "Right Region Depth Histogram please work! " << RightRegionDepthValues << endl;
+                        
+
+                        cout << "got to level 16!" << endl;
+                        // Declares the points
+                        
+                        cout << "got to level 16.25" << endl;
+                        cout << "RectIndex" << RectIndex << endl;
+                        cout << "NumReflectivePairs" << NumReflectivePairs << endl;    
+                        
+                    
+                
+            
+            }      
         
-    
-        Mat LeftDepthRegionMat = depth(LeftDepthRegion);
-        Mat RightDepthRegionMat = depth(RightDepthRegion);
-        //cv::Mat LeftDepthRegionMat = frameset.depth(LeftDepthRegion);
-
-        //cv::Mat RightDepthRegionMat = frameset.depth(RightDepthRegion);
-       // imshow("left region depth pls", depth);
-        leftdepthregionhistogram.clear();
-        rightdepthregionhistogram.clear();
-
-        leftdepthregionhistogram.insert_image(LeftDepthRegionMat);
-        rightdepthregionhistogram.insert_image(RightDepthRegionMat);
-        //leftdepth_hist.insert_image(LeftDepthRegionMat);
-
-        //unsigned short leftregionsdepthusinghistogram = leftdepth_hist.take_percentile(percentile);
-
-        //cout << "depth from histogram " << leftregionsdepthusinghistogram << endl;
-
-        float LeftRegionDepthValues = (float)leftdepthregionhistogram.take_percentile(percentile);
-
-        float RightRegionDepthValues = (float)rightdepthregionhistogram.take_percentile(percentile);
-
-        cout << "Left Region Depth Histogram please work! " << LeftRegionDepthValues << endl;
-
-        cout << "Right Region Depth Histogram please work! " << RightRegionDepthValues << endl;
-        
-
-        cout << "got to level 16!" << endl;
-        // Declares the points
         Point2f leftpoint; 
         Point2f rightpoint;
-        cout << "got to level 16.25" << endl;
-        cout << "RectIndex" << RectIndex << endl;
-        cout << "NumReflectivePairs" << NumReflectivePairs << endl;
-        
+
         if(NumReflectivePairs != 0)
         {
             leftpoint.x = RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexLeft].RectCX;
