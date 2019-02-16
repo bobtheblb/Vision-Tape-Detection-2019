@@ -3,7 +3,7 @@
 
 #include <librealsense2/rs_advanced_mode.h>
 #include <stdio.h>
-
+#include <math.h>
 // include OpenCV header file
 
 #include <opencv2/opencv.hpp>
@@ -41,16 +41,26 @@ using namespace cv;
 int main()
 
 {
-        int iLowH = 0;
+        int iLowH = 23;
 
-        int iHighH = 37;
+        int iHighH = 115;
 
 
 
-        int iLowS = 51; 
+        int iLowS = 96; 
         int min_hist = 10;
         int max_hist = 4000;
-        float percentile = 40.0 / 100.0;
+        float percentile = 50.0 / 100.0;
+        
+
+
+
+
+
+
+
+
+        int iHighS = 239;
 
 
 
@@ -60,21 +70,27 @@ int main()
 
 
 
-        int iHighS = 255;
 
 
 
-        int iLowV = 8;
 
-        int iHighV = 255;
+
+
+
+
+        int iLowV = 0;
+
+        int iHighV = 122;
         
        
     //Contruct a pipeline which abstracts the device
 
     rs2::pipeline pipe;
    rs2::config cfg;
- cfg.enable_stream( rs2_stream::RS2_STREAM_DEPTH, SCREENWIDTH, SCREENHEIGHT, rs2_format::RS2_FORMAT_Z16, 60 );
-
+    cfg.enable_stream( rs2_stream::RS2_STREAM_DEPTH, SCREENWIDTH, SCREENHEIGHT, rs2_format::RS2_FORMAT_Z16, 60 );
+    
+    cfg.enable_stream(rs2_stream::RS2_STREAM_COLOR, SCREENWIDTH, SCREENHEIGHT, rs2_format::RS2_FORMAT_BGR8, 60);
+    auto profile = pipe.start();
     // Create a context object. This object owns the handles to all connected realsense devices.
     // The returned object should be released with rs2_delete_context(...)
     ////rs2_context* ctx = rs2_create_context(RS2_API_VERSION, &e);
@@ -90,7 +106,7 @@ if (!device_count)
 // Get the first connected device
 //auto dev = devices[0];
 //std::ifstream t("/home/bobtheblb/DuncansResources/demos/epicgamermoments/realsensesettings.json");
-auto profile = pipe.start();
+
 rs400::advanced_mode dev = profile.get_device();
 //advanced_mode_dev.load_json(str);
 // Enter advanced mode
@@ -133,8 +149,11 @@ auto sensor = profile.get_device().first<rs2::depth_sensor>();
     }
      namedWindow("HSV Control", WINDOW_AUTOSIZE );
      namedWindow("Threshold Image", WINDOW_AUTOSIZE );
-     namedWindow("Display Image", WINDOW_AUTOSIZE );   
+     //namedWindow("Display Image", WINDOW_AUTOSIZE );   
+    
     //Get each frame
+
+
  cvCreateTrackbar("LowH", "HSV Control", &iLowH, 179); //Hue (0 - 179)
 
  cvCreateTrackbar("HighH", "HSV Control", &iHighH, 179);
@@ -151,40 +170,61 @@ auto sensor = profile.get_device().first<rs2::depth_sensor>();
 
  cvCreateTrackbar("HighV", "HSV Control", &iHighV, 255);
     Mat Thresholdimg;
-    //rs2::spatial_filter spat;
-    //spat.set_option(RS2_OPTION_HOLES_FILL, 5);
+    rs2::spatial_filter spat;
+    spat.set_option(RS2_OPTION_HOLES_FILL, 5);
+    rs2::align align(RS2_STREAM_COLOR);
 
-
-    auto leftdepth_hist = Histogram<unsigned short>(min_hist, max_hist);
-    auto rightdepth_hist = Histogram<unsigned short>(min_hist, max_hist);
+    //auto leftdepth_hist = Histogram<unsigned short>(min_hist, max_hist);
+    //auto rightdepth_hist = Histogram<unsigned short>(min_hist, max_hist);
 
     
-    auto leftdepthregionhistogram = Histogram<unsigned short>(100, 4000);
-    auto rightdepthregionhistogram = Histogram<unsigned short>(100, 4000);
+    auto leftdepthregionhistogram = Histogram<unsigned short>(200, 1000);
+    auto rightdepthregionhistogram = Histogram<unsigned short>(200, 1000);
 
     //dev.enable_stream( rs::stream::depth, SCREENWIDTH, SCREENHEIGHT, rs::format::z16, 60);
     while (true) {
+   
+
+    //cout << "left type " << &leftdepthregionhistogram << endl;
+    //cout << "right type " << &rightdepthregionhistogram << endl;
+
     auto data = pipe.wait_for_frames();
     frames = pipe.wait_for_frames();
-    rs2::align align_to(RS2_STREAM_COLOR);
+    //rs2::align align_to(RS2_STREAM_COLOR);
     //depth = dec.process(depth); 
     //data = align_to.process(data);
     //rs2::frame depth = data.get_depth_frame();
     //data = align_to.process(data);
-    rs2::frame color_frame = frames.get_color_frame();
-    auto depth_frame = data.get_depth_frame();
-    auto depth_mat = depth_frame_to_meters(pipe, depth_frame);
+    
+    //rs2::frame color_frame = frames.get_color_frame();
+    //auto depth_frame = data.get_depth_frame();
+
+    rs2::align align_to(RS2_STREAM_COLOR);
+    auto aligned_frames = align.process(frames);
+    rs2::video_frame color_frame = aligned_frames.first(RS2_STREAM_COLOR);
+    rs2::depth_frame depth_frame = aligned_frames.get_depth_frame();
+    
+    
+    //auto depth = depth_frame_to_meters(pipe, depth_frame);
+    //cout << depth << endl;
+    //depth = depth * 1000;
     //auto depth_mat = depth_frame_to_meters(pipe, depth_frame);
     //rs2::frame depth_frame = frames.get_depth_frame();
 
    // int depthwidth = depth_frame.as<rs2::video_frame>().get_width();
     //int depthheight = depth_frame.as<rs2::video_frame>().get_width();
     // Creating OpenCV Matrix from a color image
-    Mat color(Size(640, 480), CV_8UC3, (void*)color_frame.get_data(), Mat::AUTO_STEP);
-    Mat depth(Size(640, 480), CV_16UC1, (void*)depth_frame.get_data(), Mat::AUTO_STEP);
+    Mat color(Size(SCREENWIDTH, SCREENHEIGHT), CV_8UC3, (void*)color_frame.get_data(), Mat::AUTO_STEP);
+    Mat depth(Size(SCREENWIDTH, SCREENHEIGHT), CV_16UC1, (void*)depth_frame.get_data(), Mat::AUTO_STEP);
+    //imshow("Depth framee ", depth);
     
 
+
+
+ 
    
+
+
     //mat depth(Size(depthwidth, depthheight), CV_8UC3, (void*)depth_frame.get_data(), Mat::AUTO_STEP);
     Mat canny_result;
     Mat boundingbox = Mat::zeros(color.rows, color.cols, CV_8UC3);
@@ -252,7 +292,7 @@ auto sensor = profile.get_device().first<rs2::depth_sensor>();
     LineEndpts RectLongestLines[MAXCONTOURS]; 
     
     int CombinedReflectiveTapePair[MAXCONTOURS];
-    cout << "Got to level 0!" << endl;
+    //cout << "Got to level 0!" << endl;
     
     int RectIndex = 0;
     
@@ -263,11 +303,11 @@ auto sensor = profile.get_device().first<rs2::depth_sensor>();
     for (auto& contour : contours) {
         
 
-        cout << "got to level 0.1!" << endl;
+        //cout << "got to level 0.1!" << endl;
         float highestnums[contours.size()];
-        cout << "got to level 0.25!" << endl;
+        //cout << "got to level 0.25!" << endl;
         Rect current_rect = boundingRect(contour);
-         cout << "got to level 0.5!" << endl;
+        // cout << "got to level 0.5!" << endl;
         
 
 
@@ -292,7 +332,7 @@ auto sensor = profile.get_device().first<rs2::depth_sensor>();
         float DeltaXArray[4];
         float DeltaYArray[4];
         float lines[4];
-         cout << "got to level 1!" << endl;
+        // cout << "got to level 1!" << endl;
 
         DeltaXArray[0] = corners[1].x - corners[0].x;
         DeltaYArray[0] = corners[1].y - corners[0].y; 
@@ -323,7 +363,7 @@ auto sensor = profile.get_device().first<rs2::depth_sensor>();
         
         
         
-        cout << "got to level 2!" << endl;
+        //cout << "got to level 2!" << endl;
 
         
          if (RectIndex > MAXCONTOURS - 10)
@@ -354,7 +394,7 @@ auto sensor = profile.get_device().first<rs2::depth_sensor>();
             }
         }//for(int i = 1; i <= 3; i++)
 
-        cout << "got to level 3!" << endl;
+       // cout << "got to level 3!" << endl;
         RectLongestLines[RectIndex].A.x = corners[LongestLineIndex].x;
         RectLongestLines[RectIndex].A.y = corners[LongestLineIndex].y;
 
@@ -408,7 +448,7 @@ auto sensor = profile.get_device().first<rs2::depth_sensor>();
 
 
 
-        cout << "got to level 4!" << endl;
+        //cout << "got to level 4!" << endl;
         /*else
         {
           RectLongestLines[RectIndex].B.y = corners[LineIndex+1].y;
@@ -452,14 +492,16 @@ RectIndex++;
 
     
     
-    cout << "got to level 10!" << endl;
-    cout << "RectIndex" << RectIndex << endl;
+    //cout << "got to level 10!" << endl;
+    //cout << "RectIndex" << RectIndex << endl;
 
     int NumReflectivePairs = 0;
 
 //*********************************************************** 
   //LOOP FOR MATCHING TAPE PAIRS
- 
+    
+    float RealPairDistance;
+
     if (RectIndex != 0)
     {
     for(int SlopeIndexA = 0; SlopeIndexA < RectIndex - 1; SlopeIndexA++) 
@@ -469,11 +511,11 @@ RectIndex++;
             {
                  if (RectLongestLines[SlopeIndexA].IsStrip == 0 || RectLongestLines[SlopeIndexB].IsStrip == 0)    
                         {
-                            cout << "Failed aspect ratio test" << endl;
+                          //  cout << "Failed aspect ratio test" << endl;
                         }   
 
-                 cout << "failed A slope" << RectLongestLines[SlopeIndexA].Slope << endl;
-                 cout << "failed B slope" << RectLongestLines[SlopeIndexB].Slope << endl;   
+                 //cout << "failed A slope" << RectLongestLines[SlopeIndexA].Slope << endl;
+                 //cout << "failed B slope" << RectLongestLines[SlopeIndexB].Slope << endl;   
                     
                 if (RectLongestLines[SlopeIndexA].IsStrip == 1 && RectLongestLines[SlopeIndexB].IsStrip == 1)
                 {
@@ -500,7 +542,7 @@ RectIndex++;
                         float TapeSpacingRatioDifference = abs(IDEALSPACINGTOWIDTHRATIO - ActualSpacingtoWidthRatio);
 
                         float TapeSpacingRatioPercentDifference = (TapeSpacingRatioDifference/IDEALSPACINGTOWIDTHRATIO) * 100;
-                        cout << "Got to level 100 " << endl;
+                        /*cout << "Got to level 100 " << endl;
                         cout << "Made it to end of Slope tests " << endl;
                         cout << "Left tape pos " << RectLongestLines[SlopeIndexA].A.x << endl;
                         cout << "Right tape pos " << RectLongestLines[SlopeIndexB].A.x << endl;
@@ -509,7 +551,7 @@ RectIndex++;
                         cout << "RectWidth " << MeasuredTapeSpacing/RectLongestLines[SlopeIndexA].RectWidth;
                         cout << "Measured spacing " << MeasuredTapeSpacing;
                         cout << "Measured ratio spacing to width " << ActualSpacingtoWidthRatio;                       
-                        
+                        */
                         
                             if (TapeSpacingRatioPercentDifference < ALLOWABLESPACINGPERCENTDIFFERENCE)
                             {
@@ -532,19 +574,19 @@ RectIndex++;
                         ReflectiveTapePairs[NumReflectivePairs].TapePairCenterX = ((RectLongestLines[SlopeIndexA].RectCX + RectLongestLines[SlopeIndexB].RectCX)/2);
                         NumReflectivePairs++;  
                         
-                        cout << "Made it to end of spacing tests!!!" << endl;
+                       // cout << "Made it to end of spacing tests!!!" << endl;
                         
-                        cout << "ContourIndexLeft" << ReflectiveTapePairs[NumReflectivePairs].ContourIndexLeft << endl;
+                        //cout << "ContourIndexLeft" << ReflectiveTapePairs[NumReflectivePairs].ContourIndexLeft << endl;
                     
-                        cout << "ContourIndexRight" << ReflectiveTapePairs[NumReflectivePairs].ContourIndexRight << endl;
+                        //cout << "ContourIndexRight" << ReflectiveTapePairs[NumReflectivePairs].ContourIndexRight << endl;
                             }
 
                         
                     }//if (RectLongestLines[SlopeIndexA].Slope > 0)
                     else
                     {
-                        cout << "A tape slope" << RectLongestLines[SlopeIndexA].Slope << endl;
-                        cout << "B tape slope" << RectLongestLines[SlopeIndexB].Slope << endl;
+                      //  cout << "A tape slope" << RectLongestLines[SlopeIndexA].Slope << endl;
+                      //  cout << "B tape slope" << RectLongestLines[SlopeIndexB].Slope << endl;
                     }
 
                 }
@@ -579,15 +621,15 @@ RectIndex++;
             {
                 RectCount = MAXCONTOURS;
             }
-            cout << "Hi" << std::endl;
-            cout << "RectCount" << (RectCount) << std::endl;
+           // cout << "Hi" << std::endl;
+           // cout << "RectCount" << (RectCount) << std::endl;
         if (RectCount == 0)
         {
-            cout << "rEeEeEeEe" << endl;
+            //cout << "rEeEeEeEe" << endl;
         }
          else
         {
-        cout << "got to level 15!" << endl;
+        //cout << "got to level 15!" << endl;
 
 
 
@@ -604,6 +646,7 @@ RectIndex++;
             {
                 ClosestPairDistance = TapePairDistanceFromCenter;
                 int CenterPairIndex = RectIndex; 
+                RealPairDistance = ReflectiveTapePairs[RectIndex].TapePairCenterX - CENTERSCREENX;
             }
         }
         
@@ -638,11 +681,11 @@ RectIndex++;
                 LeftOutermostCornerx = CornerXPlus1 ;
                 LeftOutermostCornerIndex = CornerIndex + 1 ;
             }
-              cout << "Left +1 point :D " << CornerXPlus1 << endl;
-              cout << "Left outermost Corner X " << LeftOutermostCornerx << endl;
-              cout << "Left Corner Index " << LeftOutermostCornerIndex << endl;
+             // cout << "Left +1 point :D " << CornerXPlus1 << endl;
+             // cout << "Left outermost Corner X " << LeftOutermostCornerx << endl;
+             // cout << "Left Corner Index " << LeftOutermostCornerIndex << endl;
        }
-       cout << "Final leftmost x point" << LeftRectCornersX[LeftOutermostCornerIndex];
+      // cout << "Final leftmost x point" << LeftRectCornersX[LeftOutermostCornerIndex];
        
       int RightOutermostCornerx = RightRectCornersX[0] ;
 
@@ -657,11 +700,11 @@ RectIndex++;
                 RightOutermostCornerx = CornerXPlus1 ;
                 RightOutermostCornerIndex = CornerIndex + 1 ;
             }
-              cout << "Right +1 point :D " << CornerXPlus1 << endl;
-              cout << "Right outermost Corner X " << RightOutermostCornerx << endl;
-              cout << "Right Corner Index " << RightOutermostCornerIndex << endl;
+             // cout << "Right +1 point :D " << CornerXPlus1 << endl;
+             // cout << "Right outermost Corner X " << RightOutermostCornerx << endl;
+             // cout << "Right Corner Index " << RightOutermostCornerIndex << endl;
        }
-       cout << "Final rightmost x point" << RightRectCornersX[RightOutermostCornerIndex];
+       //cout << "Final rightmost x point" << RightRectCornersX[RightOutermostCornerIndex];
 //END OF LOOP FIND OUTERMOST POINTS
 //***********************************************************
         int LeftRectTopY = RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexLeft].RectCY - (RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexLeft].RectLength / 1.5);
@@ -670,27 +713,27 @@ RectIndex++;
         int RightRectBottomY = RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexRight].RectCY + (RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexRight].RectLength / 1.5);
 
         if  ((
-            (LeftRectCornersX[LeftOutermostCornerIndex] - RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexLeft].RectWidth / 1) > 10 
-            && (RightRectCornersX[RightOutermostCornerIndex] + RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexRight].RectWidth / 8) + (RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexRight].RectWidth / 1) < 635
+            (LeftRectCornersX[LeftOutermostCornerIndex] - RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexLeft].RectWidth / 1) > 20 
+            && (RightRectCornersX[RightOutermostCornerIndex] + RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexRight].RectWidth / 8) + (RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexRight].RectWidth / 1) < SCREENWIDTH - 20
             )
             
             &&
 
             
-            ((LeftRectTopY > 5 && RightRectTopY > 5) && (LeftRectBottomY < 475 && RightRectBottomY < 475))
+            ((LeftRectTopY > 10 && RightRectTopY > 10) && (LeftRectBottomY < SCREENHEIGHT - 10 && RightRectBottomY < SCREENHEIGHT - 10))
             ) 
 
             {   
            
                         Rect RightDepthRegion(RightRectCornersX[RightOutermostCornerIndex] + RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexRight].RectWidth / 8, 
-                            RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexRight].RectCY - (RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexRight].RectLength / 1.5),                   
+                            RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexRight].RectCY - (RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexRight].RectLength / 1.9),                   
                              (RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexRight].RectWidth / 1),
-                             (RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexRight].RectLength * 1.2));
+                             (RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexRight].RectLength * 1));
                     
                         Rect LeftDepthRegion(LeftRectCornersX[LeftOutermostCornerIndex] - RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexLeft].RectWidth / 1,
-                            RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexLeft].RectCY - (RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexLeft].RectLength / 1.5),
+                            RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexLeft].RectCY - (RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexLeft].RectLength / 1.9),
                              (RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexLeft].RectWidth / 1), 
-                             (RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexLeft].RectLength * 1.2));
+                             (RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexLeft].RectLength * 1));
 
                         //LeftDepthRegion = LeftDepthRegion  & Rect(0, 0, depth_mat.cols, depth_mat.rows);
 
@@ -698,52 +741,162 @@ RectIndex++;
 
                         rectangle(boundingbox, LeftDepthRegion, cv::Scalar(0, 255, 0));
 
-                        rectangle(boundingbox, RightDepthRegion, cv::Scalar(0, 255, 0));
+                        rectangle(boundingbox, RightDepthRegion, cv::Scalar(0, 0, 255));
 
                         //rectangle(color, LeftDepthRegion, cv::Scalar(0, 255, 0));
 
                         //rectangle(color, RightDepthRegion, cv::Scalar(0, 255, 0));
                        
-                        cout << LeftDepthRegion << endl;
-                        cout << RightDepthRegion << endl;
-                        cout << "parameters for left rect" << RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexLeft].RectLength << " " << RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexLeft].RectWidth << endl;
-                        cout << "parameters for right rect" << RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexRight].RectLength << " " << RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexRight].RectWidth << endl;
+                        //cout << LeftDepthRegion << endl;
+                        //cout << RightDepthRegion << endl;
+                        //cout << "parameters for left rect" << RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexLeft].RectLength << " " << RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexLeft].RectWidth << endl;
+                        //cout << "parameters for right rect" << RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexRight].RectLength << " " << RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexRight].RectWidth << endl;
                         
                         
                         Mat LeftDepthRegionMat = depth(LeftDepthRegion);
                         Mat RightDepthRegionMat = depth(RightDepthRegion);
-                        
+                        //imshow("left mat", LeftDepthRegionMat);
+                        //imshow("right mat", RightDepthRegionMat);
+                        //cout << "Left mat           " << LeftDepthRegionMat << endl;
+                        //cout << "Right mat" << RightDepthRegionMat << endl;
                         //cv::Mat LeftDepthRegionMat = frameset.depth(LeftDepthRegion);
 
                         //cv::Mat RightDepthRegionMat = frameset.depth(RightDepthRegion);
                        // imshow("left region depth pls", depth);
-                        leftdepthregionhistogram.clear();
-                        rightdepthregionhistogram.clear();
+                        //leftdepthregionhistogram.clear();
+                        //rightdepthregionhistogram.clear();
 
-                        leftdepthregionhistogram.insert_image(LeftDepthRegionMat);
-                        rightdepthregionhistogram.insert_image(RightDepthRegionMat);
-                        leftdepth_hist.insert_image(LeftDepthRegionMat);
+                        //leftdepthregionhistogram.insert_image(LeftDepthRegionMat);
+                        //rightdepthregionhistogram.insert_image(RightDepthRegionMat);
+                       
+                        //Scalar leftdepthmeanregion = mean(LeftDepthRegionMat);
+                        //Scalar rightdepthmeanregion = mean(RightDepthRegionMat);
 
-                        unsigned short leftregionsdepthusinghistogram = leftdepth_hist.take_percentile(percentile);
-
-                        cout << "depth from histogram " << leftregionsdepthusinghistogram << endl;
-
-                        float LeftRegionDepthValues = (float)leftdepthregionhistogram.take_percentile(percentile);
-
-                        float RightRegionDepthValues = (float)rightdepthregionhistogram.take_percentile(percentile);
+                        //cout << leftdepthmeanregion << "Left mean " << endl;
+                        //cout << rightdepthmeanregion << "Right mean" << endl;
                         
-                        cout << "Left Region Depth Histogram please work! " << LeftRegionDepthValues << endl;
+                        float LeftDepthRegionMean;
+                        float RightDepthRegionMean;
 
-                        cout << "Right Region Depth Histogram please work! " << RightRegionDepthValues << endl;
+                        if (NumReflectivePairs != 0)
+                        {
+                        int LeftRowsIndex;
+                        int LeftColumnsIndex;
+                        long int LeftDepthTotal = 0;
+                        int LeftValidNumberCount = 0;
+                        long int RightDepthTotal = 0;
+                        int RightValidNumberCount = 0;
+                        int RightRowsIndex;
+                        int RightColumnsIndex;
+
+                        for (LeftRowsIndex = 1; LeftRowsIndex < LeftDepthRegionMat.rows; LeftRowsIndex++)
+                        {
+                            for (LeftColumnsIndex = 1; LeftColumnsIndex < LeftDepthRegionMat.cols; LeftColumnsIndex++)
+                            {
+                                if (LeftDepthRegionMat.at<unsigned short>(LeftRowsIndex, LeftColumnsIndex) > 400 && LeftDepthRegionMat.at<unsigned short>(LeftRowsIndex, LeftColumnsIndex) < 5000)
+                                {
+                                    LeftDepthTotal = LeftDepthTotal + LeftDepthRegionMat.at<unsigned short>(LeftRowsIndex, LeftColumnsIndex);
+                                    LeftValidNumberCount++;
+                                }
+                            }
+                        }
+                       
                         
 
-                        cout << "got to level 16!" << endl;
+                        for (RightRowsIndex = 1; RightRowsIndex < RightDepthRegionMat.rows; RightRowsIndex++)
+                        {
+                            for (RightColumnsIndex = 1; RightColumnsIndex < RightDepthRegionMat.cols; RightColumnsIndex++)
+                            {
+                                if (RightDepthRegionMat.at<unsigned short>(RightRowsIndex, RightColumnsIndex) > 400 && RightDepthRegionMat.at<unsigned short>(RightRowsIndex, RightColumnsIndex) < 5000)
+                                {
+                                    RightDepthTotal = RightDepthTotal + RightDepthRegionMat.at<unsigned short>(RightRowsIndex, RightColumnsIndex);
+                                    RightValidNumberCount++;
+                                    //cout << "Made it to right if statements " << endl;
+                                }
+                            }
+                        }
+                        //cout << "we made it to the right side bois" << endl;
+                        
+                        cout << LeftValidNumberCount << endl;
+                        cout << RightValidNumberCount << endl;
+
+                        if (RightValidNumberCount != 0 && LeftValidNumberCount != 0)
+                        {
+                        
+
+                        LeftDepthRegionMean = (float)LeftDepthTotal / (float)LeftValidNumberCount;
+                        RightDepthRegionMean = (float)RightDepthTotal / (float)RightValidNumberCount;
+                        
+                        cout << "Right region mean pls work!!!!!!! " << RightDepthRegionMean << endl;
+                        cout << "Left region mean pls work!!!!!!! " << LeftDepthRegionMean << endl;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                        //unsigned short LeftRegionDepthValues = (float)leftdepthregionhistogram.take_percentile(percentile);
+
+                        //unsigned short RightRegionDepthValues = (float)rightdepthregionhistogram.take_percentile(percentile);
+                        
+                        //cout << "Left Region Depth Histogram please work! " << LeftRegionDepthValues << endl;
+
+                        //cout << "Right Region Depth Histogram please work! " << RightRegionDepthValues << endl;
+                        float CenterDepth = (LeftDepthRegionMean + RightDepthRegionMean) / 2;
+
+                        float AverageRectWidth = (RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexRight].RectWidth + RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexLeft].RectWidth) / 2;
+                        
+                        float ExpectedTapeWidth = 2.0;
+
+                        float ExpectedTapeWidthToMeasured = ExpectedTapeWidth / AverageRectWidth;
+                        
+                        float RealTapePairDistanceFromCenter = RealPairDistance * (ExpectedTapeWidthToMeasured);
+
+                        float RealDistanceBetweenTape = abs(RightDepthRegionMean - LeftDepthRegionMean);
+                        
+                        bool VisionTapePairSlope;
+
+                        if (RightDepthRegionMean > LeftDepthRegionMean)
+                        {
+                            VisionTapePairSlope = 0;
+                        }
+                        else
+                        {
+                            VisionTapePairSlope = 1;
+                        }
+    
+                        float VisionTapePairLength = 381.0;
+                        
+                        float VisionTapePairRealSlope = (asin(RealDistanceBetweenTape / VisionTapePairLength)) * (180 / 3.14159);
+
+                        cout << "Real Distance between tape " << RealDistanceBetweenTape << endl;
+                        
+                        cout << "Center Depth " << CenterDepth << endl;
+
+                        cout << "Real Distance from Center" << RealTapePairDistanceFromCenter << endl;
+
+                        cout << "Vision Tape Degrees and negative slope 0 and positive slope 1 " << VisionTapePairSlope << " " << VisionTapePairRealSlope << endl;
+
+                        //cout << "got to level 16!" << endl;
                         // Declares the points
-                        
-                        cout << "got to level 16.25" << endl;
-                        cout << "RectIndex" << RectIndex << endl;
-                        cout << "NumReflectivePairs" << NumReflectivePairs << endl;    
-                        
+                        //}
+                        //cout << "got to level 16.25" << endl;
+                        //cout << "RectIndex" << RectIndex << endl;
+                        //cout << "NumReflectivePairs" << NumReflectivePairs << endl;    
+                        }
+                        }
+
                     
                 
             
@@ -755,29 +908,29 @@ RectIndex++;
         if(NumReflectivePairs != 0)
         {
             leftpoint.x = RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexLeft].RectCX;
-            cout << "got to level 16.3" << endl;
+            //cout << "got to level 16.3" << endl;
             leftpoint.y = RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexLeft].RectCY;
-            cout << "got to level 16.5!" << endl;
-            cout << "RectIndex" << RectIndex << endl;
+            //cout << "got to level 16.5!" << endl;
+            //cout << "RectIndex" << RectIndex << endl;
             rightpoint.x = RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexRight].RectCX;
-            cout << "got to level 16.74" << endl;
+            //cout << "got to level 16.74" << endl;
             rightpoint.y = RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexRight].RectCY;
             
-            cout << "got to level 17!" << endl;
+            //cout << "got to level 17!" << endl;
             // Creates a line between center points of left and right tape from the tape pairs
             line(boundingbox, leftpoint, rightpoint, Scalar(0, 255, 255), 3, 8, 0);
         }
         
         } 
 
-        cout << "got to level 18!" << endl;
+        //cout << "got to level 18!" << endl;
     drawContours(boundingbox, contours, -1, Scalar(0, 0, 255));
-        cout << "got to level 19!" << endl;
+       // cout << "got to level 19!" << endl;
     rectangle(boundingbox, largest_rectangle, Scalar(0, 255, 0), 2);
     }
 
     imshow("bounding boxes", boundingbox);
-    cout << "got to level 20" << endl;
+   // cout << "got to level 20" << endl;
 
 
     
