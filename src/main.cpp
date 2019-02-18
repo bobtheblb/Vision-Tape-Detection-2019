@@ -27,13 +27,13 @@ using namespace cv;
 #define MAXCONTOURS 50
 #define IDEALSPACINGTOWIDTHRATIO 4.0
 #define ALLOWABLESPACINGPERCENTDIFFERENCE 60
-#define SCREENWIDTH 640
-#define SCREENHEIGHT 480
+#define SCREENWIDTH 1280
+#define SCREENHEIGHT 720
 #define CENTERSCREENX SCREENWIDTH/2
 #define CENTERSCREENY SCREENHEIGHT/2
 #define IDEALHEIGHTTOWIDTHRATIO 3
-#define ALLOWABLEASPECTRATIODIFFERENCE 0.8
-
+#define ALLOWABLEASPECTRATIODIFFERENCE 1.2
+#define PI 3.14159
 
 
 
@@ -41,13 +41,13 @@ using namespace cv;
 int main()
 
 {
-        int iLowH = 23;
+        int iLowH = 0;
 
         int iHighH = 115;
 
 
 
-        int iLowS = 96; 
+        int iLowS = 121; 
         int min_hist = 10;
         int max_hist = 4000;
         float percentile = 50.0 / 100.0;
@@ -86,11 +86,11 @@ int main()
     //Contruct a pipeline which abstracts the device
 
     rs2::pipeline pipe;
-   rs2::config cfg;
-    cfg.enable_stream( rs2_stream::RS2_STREAM_DEPTH, SCREENWIDTH, SCREENHEIGHT, rs2_format::RS2_FORMAT_Z16, 60 );
+    rs2::config cfg;
+    cfg.enable_stream( rs2_stream::RS2_STREAM_DEPTH, SCREENWIDTH, SCREENHEIGHT, rs2_format::RS2_FORMAT_Z16, 30 );
     
-    cfg.enable_stream(rs2_stream::RS2_STREAM_COLOR, SCREENWIDTH, SCREENHEIGHT, rs2_format::RS2_FORMAT_BGR8, 60);
-    auto profile = pipe.start();
+    cfg.enable_stream(rs2_stream::RS2_STREAM_COLOR, SCREENWIDTH, SCREENHEIGHT, rs2_format::RS2_FORMAT_BGR8, 30);
+    auto profile = pipe.start(cfg);
     // Create a context object. This object owns the handles to all connected realsense devices.
     // The returned object should be released with rs2_delete_context(...)
     ////rs2_context* ctx = rs2_create_context(RS2_API_VERSION, &e);
@@ -106,7 +106,7 @@ if (!device_count)
 // Get the first connected device
 //auto dev = devices[0];
 //std::ifstream t("/home/bobtheblb/DuncansResources/demos/epicgamermoments/realsensesettings.json");
-
+//rs2::device dev = pipe.get_active_profile().get_device();
 rs400::advanced_mode dev = profile.get_device();
 //advanced_mode_dev.load_json(str);
 // Enter advanced mode
@@ -135,7 +135,7 @@ auto sensor = profile.get_device().first<rs2::depth_sensor>();
 //   auto sensor = profile.get_device().first<rs2::depth_sensor>();
     rs2::frameset frames;
 
-    for(int i = 0; i < 30; i++)
+    for(int i = 0; i < 100; i++)
 
 //   while (true) {
 
@@ -170,8 +170,8 @@ auto sensor = profile.get_device().first<rs2::depth_sensor>();
 
  cvCreateTrackbar("HighV", "HSV Control", &iHighV, 255);
     Mat Thresholdimg;
-    rs2::spatial_filter spat;
-    spat.set_option(RS2_OPTION_HOLES_FILL, 5);
+    //rs2::spatial_filter spat;
+    //spat.set_option(RS2_OPTION_HOLES_FILL, 5);
     rs2::align align(RS2_STREAM_COLOR);
 
     //auto leftdepth_hist = Histogram<unsigned short>(min_hist, max_hist);
@@ -185,7 +185,7 @@ auto sensor = profile.get_device().first<rs2::depth_sensor>();
     while (true) {
    
 
-    //cout << "left type " << &leftdepthregionhistogram << endl;
+    cout << "left type " << endl;
     //cout << "right type " << &rightdepthregionhistogram << endl;
 
     auto data = pipe.wait_for_frames();
@@ -216,11 +216,14 @@ auto sensor = profile.get_device().first<rs2::depth_sensor>();
     // Creating OpenCV Matrix from a color image
     Mat color(Size(SCREENWIDTH, SCREENHEIGHT), CV_8UC3, (void*)color_frame.get_data(), Mat::AUTO_STEP);
     Mat depth(Size(SCREENWIDTH, SCREENHEIGHT), CV_16UC1, (void*)depth_frame.get_data(), Mat::AUTO_STEP);
+    
     //imshow("Depth framee ", depth);
     
+    
 
-
-
+    //imshow("left mat", LeftDepthRegionMat);
+    //imshow("right mat", RightDepthRegionMat);
+    imshow("depth mat", depth);
  
    
 
@@ -712,6 +715,21 @@ RectIndex++;
         int RightRectTopY = RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexRight].RectCY - (RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexRight].RectLength / 1.5);
         int RightRectBottomY = RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexRight].RectCY + (RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexRight].RectLength / 1.5);
 
+        float LeftDepthRegionMean;
+        float RightDepthRegionMean;
+
+        float CenterDepth;
+
+        float AverageRectWidth = (RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexRight].RectWidth + RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexLeft].RectWidth) / 2;
+                        
+        float ExpectedTapeWidth = 50.8;
+
+        float ExpectedTapeWidthToMeasured = ExpectedTapeWidth / AverageRectWidth;
+                        
+        float RealTapePairDistanceFromCenter = RealPairDistance * (ExpectedTapeWidthToMeasured);
+
+        
+
         if  ((
             (LeftRectCornersX[LeftOutermostCornerIndex] - RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexLeft].RectWidth / 1) > 20 
             && (RightRectCornersX[RightOutermostCornerIndex] + RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexRight].RectWidth / 8) + (RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexRight].RectWidth / 1) < SCREENWIDTH - 20
@@ -730,7 +748,7 @@ RectIndex++;
                              (RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexRight].RectWidth / 1),
                              (RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexRight].RectLength * 1));
                     
-                        Rect LeftDepthRegion(LeftRectCornersX[LeftOutermostCornerIndex] - RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexLeft].RectWidth / 1,
+                        Rect LeftDepthRegion(LeftRectCornersX[LeftOutermostCornerIndex] - RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexLeft].RectWidth / 0.9,
                             RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexLeft].RectCY - (RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexLeft].RectLength / 1.9),
                              (RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexLeft].RectWidth / 1), 
                              (RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexLeft].RectLength * 1));
@@ -755,8 +773,7 @@ RectIndex++;
                         
                         Mat LeftDepthRegionMat = depth(LeftDepthRegion);
                         Mat RightDepthRegionMat = depth(RightDepthRegion);
-                        //imshow("left mat", LeftDepthRegionMat);
-                        //imshow("right mat", RightDepthRegionMat);
+                        
                         //cout << "Left mat           " << LeftDepthRegionMat << endl;
                         //cout << "Right mat" << RightDepthRegionMat << endl;
                         //cv::Mat LeftDepthRegionMat = frameset.depth(LeftDepthRegion);
@@ -775,8 +792,7 @@ RectIndex++;
                         //cout << leftdepthmeanregion << "Left mean " << endl;
                         //cout << rightdepthmeanregion << "Right mean" << endl;
                         
-                        float LeftDepthRegionMean;
-                        float RightDepthRegionMean;
+                    
 
                         if (NumReflectivePairs != 0)
                         {
@@ -819,6 +835,12 @@ RectIndex++;
                         
                         cout << LeftValidNumberCount << endl;
                         cout << RightValidNumberCount << endl;
+                        //cout << "Left Depth Region Mat " << LeftDepthRegionMat << endl;
+                        //cout << RightDepthRegionMat << endl;
+                       
+
+
+
 
                         if (RightValidNumberCount != 0 && LeftValidNumberCount != 0)
                         {
@@ -830,77 +852,58 @@ RectIndex++;
                         cout << "Right region mean pls work!!!!!!! " << RightDepthRegionMean << endl;
                         cout << "Left region mean pls work!!!!!!! " << LeftDepthRegionMean << endl;
 
+                        float LeftDepth = LeftDepthRegionMean;
+                        float RightDepth = RightDepthRegionMean;
+                        float DepthDifference = (RightDepth - LeftDepth);
+                        float CenterDepth = (LeftDepth + RightDepth) / 2;
 
+                        float VisionTargetDistanceFromCenter = RealTapePairDistanceFromCenter;
 
+                        float ControlPointDistanceFromVisionTarget = 1041.4;
+                        float VisionTargetLength = 381;
+                        float VisionTargetSlope = (180 / PI) * asin(DepthDifference / VisionTargetLength);
 
+                        float ControlPointDistanceXFromVisionTarget = abs(ControlPointDistanceFromVisionTarget * sin(VisionTargetSlope * (PI / 180)));
+                        float ControlPointDistanceYFromVisionTarget = abs(ControlPointDistanceFromVisionTarget * cos(VisionTargetSlope * (PI / 180)));
+                        cout << VisionTargetSlope << " Slope of Target" << endl;
+                        cout << ControlPointDistanceYFromVisionTarget << " Y Control Point Distance Y From Target" << endl;
+                        cout << ControlPointDistanceXFromVisionTarget << " X Control Point Distance X From Target" << endl;
 
+                        float ControlPointDistanceXFromCenter;
 
-
-
-
-
-
-
-
-
-
-
-
-                        //unsigned short LeftRegionDepthValues = (float)leftdepthregionhistogram.take_percentile(percentile);
-
-                        //unsigned short RightRegionDepthValues = (float)rightdepthregionhistogram.take_percentile(percentile);
-                        
-                        //cout << "Left Region Depth Histogram please work! " << LeftRegionDepthValues << endl;
-
-                        //cout << "Right Region Depth Histogram please work! " << RightRegionDepthValues << endl;
-                        float CenterDepth = (LeftDepthRegionMean + RightDepthRegionMean) / 2;
-
-                        float AverageRectWidth = (RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexRight].RectWidth + RectLongestLines[ReflectiveTapePairs[CenterPairIndex].ContourIndexLeft].RectWidth) / 2;
-                        
-                        float ExpectedTapeWidth = 2.0;
-
-                        float ExpectedTapeWidthToMeasured = ExpectedTapeWidth / AverageRectWidth;
-                        
-                        float RealTapePairDistanceFromCenter = RealPairDistance * (ExpectedTapeWidthToMeasured);
-
-                        float RealDistanceBetweenTape = abs(RightDepthRegionMean - LeftDepthRegionMean);
-                        
-                        bool VisionTapePairSlope;
-
-                        if (RightDepthRegionMean > LeftDepthRegionMean)
+                        if (VisionTargetSlope > 0)
                         {
-                            VisionTapePairSlope = 0;
+                            ControlPointDistanceXFromCenter = VisionTargetDistanceFromCenter + ControlPointDistanceXFromVisionTarget;
                         }
-                        else
+
+                        if (VisionTargetSlope < 0)
                         {
-                            VisionTapePairSlope = 1;
+                            ControlPointDistanceXFromCenter = VisionTargetDistanceFromCenter - ControlPointDistanceXFromVisionTarget;
                         }
-    
-                        float VisionTapePairLength = 381.0;
+                        float ControlPointDistanceYFromCenter = CenterDepth - ControlPointDistanceYFromVisionTarget;
+
+                        float FirstAngleToMove = (180 / PI) * atan2((double)ControlPointDistanceXFromCenter, (double)ControlPointDistanceYFromCenter);
+                        cout << FirstAngleToMove << " First Angle To Move" << endl;
+                        cout << ControlPointDistanceXFromCenter << " Control Point Distance X From Center" << endl;
+                        cout << ControlPointDistanceYFromCenter << " Control Point Distance Y From Center" << endl;
+
+                        float ControlPointDistanceFromCenter = sqrt(pow(ControlPointDistanceXFromCenter, 2) + pow(ControlPointDistanceYFromCenter, 2));
+                        cout << ControlPointDistanceFromCenter << " Control Point Euclidean Distance From Center" << endl;
+
+                        float SecondAngleToMove = VisionTargetSlope - FirstAngleToMove;
+                        cout << SecondAngleToMove << " Second Angle To Move" << endl;
+                        cout << VisionTargetDistanceFromCenter << " VIsion Target Real Distance From Camera Center in Millimeters please wooork";
                         
-                        float VisionTapePairRealSlope = (asin(RealDistanceBetweenTape / VisionTapePairLength)) * (180 / 3.14159);
-
-                        cout << "Real Distance between tape " << RealDistanceBetweenTape << endl;
-                        
-                        cout << "Center Depth " << CenterDepth << endl;
-
-                        cout << "Real Distance from Center" << RealTapePairDistanceFromCenter << endl;
-
-                        cout << "Vision Tape Degrees and negative slope 0 and positive slope 1 " << VisionTapePairSlope << " " << VisionTapePairRealSlope << endl;
-
-                        //cout << "got to level 16!" << endl;
-                        // Declares the points
-                        //}
-                        //cout << "got to level 16.25" << endl;
-                        //cout << "RectIndex" << RectIndex << endl;
-                        //cout << "NumReflectivePairs" << NumReflectivePairs << endl;    
                         }
+                        
                         }
 
                     
                 
             
             }      
+        
+        
         
         Point2f leftpoint; 
         Point2f rightpoint;
