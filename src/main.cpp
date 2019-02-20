@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <math.h>
 // include OpenCV header file
-
+#include <stdlib.h>
 #include <opencv2/opencv.hpp>
 #include <iostream>
 #include <librealsense2/rs_advanced_mode.hpp>
@@ -19,6 +19,14 @@
 #include <map>
 #include <vector>
 #include <numeric>
+#include <string>
+#include <string.h>
+
+#include <stdlib.h>
+
+//#include <simple_socket_client.hpp>
+#include <iostream>
+#include </home/bobtheblb/DuncansResources/utils/sockets/simple_socket_server.hpp>
 
 using namespace std;
 
@@ -45,14 +53,15 @@ int main()
 
         int iHighH = 115;
 
-
-
+        
         int iLowS = 121; 
         int min_hist = 10;
         int max_hist = 4000;
         float percentile = 50.0 / 100.0;
         
 
+
+        const size_t message_buffer_size = 512;
 
 
 
@@ -63,10 +72,13 @@ int main()
         int iHighS = 239;
 
 
+        char input[250] = "A ";
 
-
-
-
+        /*
+        float test = 10.112111;
+        float FirstAngleToMove = (int)((test * 100) + 0.5);
+        FirstAngleToMove = FirstAngleToMove / 100;
+        cout << FirstAngleToMove << endl; */
 
 
 
@@ -166,7 +178,7 @@ auto sensor = profile.get_device().first<rs2::depth_sensor>();
 
 
 
- cvCreateTrackbar("LowV", "HSV Control", &iLowV, 255); //Value (0 - 255)
+ cvCreateTrackbar("LowV", "HSV Control", &iLowV, 255); //FirstAngleToMove (0 - 255)
 
  cvCreateTrackbar("HighV", "HSV Control", &iHighV, 255);
     Mat Thresholdimg;
@@ -174,16 +186,24 @@ auto sensor = profile.get_device().first<rs2::depth_sensor>();
     //spat.set_option(RS2_OPTION_HOLES_FILL, 5);
     rs2::align align(RS2_STREAM_COLOR);
 
+    SimpleSocket* sock;
     //auto leftdepth_hist = Histogram<unsigned short>(min_hist, max_hist);
     //auto rightdepth_hist = Histogram<unsigned short>(min_hist, max_hist);
+    sock = new SimpleSocketServer (5060);
+    char buffer[message_buffer_size] = {0};
 
-    
+    bool alive ;
+
+    ssize_t ret ;
+
     auto leftdepthregionhistogram = Histogram<unsigned short>(200, 1000);
     auto rightdepthregionhistogram = Histogram<unsigned short>(200, 1000);
-
+    
     //dev.enable_stream( rs::stream::depth, SCREENWIDTH, SCREENHEIGHT, rs::format::z16, 60);
     while (true) {
-   
+    alive = sock->keep_alive();
+
+
 
     cout << "left type " << endl;
     //cout << "right type " << &rightdepthregionhistogram << endl;
@@ -231,7 +251,7 @@ auto sensor = profile.get_device().first<rs2::depth_sensor>();
     //mat depth(Size(depthwidth, depthheight), CV_8UC3, (void*)depth_frame.get_data(), Mat::AUTO_STEP);
     Mat canny_result;
     Mat boundingbox = Mat::zeros(color.rows, color.cols, CV_8UC3);
-
+    Mat AutoAlignImage = Mat::zeros(800, 800, CV_8UC3);
     // Display in a GUI
   
     cvtColor(color, Thresholdimg, COLOR_BGR2HSV);
@@ -245,9 +265,18 @@ auto sensor = profile.get_device().first<rs2::depth_sensor>();
     dilate(Thresholdimg, Thresholdimg, structuring_element);
 
     //**********************************************************************
-
+    
     imshow("Threshold Image", Thresholdimg);
     
+    Point2f LeftRobot, RightRobot;
+
+    LeftRobot.x = 350;
+    LeftRobot.y = 600;
+    RightRobot.x = 450;
+    RightRobot.y = 600;
+
+    line(AutoAlignImage, LeftRobot, RightRobot, Scalar(0, 255, 255), 3, 8, 0);
+    imshow("Auto align image", AutoAlignImage);
     Canny(Thresholdimg, canny_result, 128, 128);
     
     std::vector<std::vector<Point>> contours;
@@ -301,7 +330,7 @@ auto sensor = profile.get_device().first<rs2::depth_sensor>();
     
 
 //***********************************************************
-//LOOP FOR FINDING TAPE CONTOURS AND GATHERING INFO
+//LOOP FOR FINDING TAPE CONTOURS AND GATHERING input
 
     for (auto& contour : contours) {
         
@@ -489,7 +518,7 @@ RectIndex++;
 
 
 
-//END OF LOOP FOR FINDING TAPE CONTOURS AND GATHERING INFO
+//END OF LOOP FOR FINDING TAPE CONTOURS AND GATHERING input
 //***********************************************************
 
 
@@ -851,7 +880,8 @@ RectIndex++;
                         
                         cout << "Right region mean pls work!!!!!!! " << RightDepthRegionMean << endl;
                         cout << "Left region mean pls work!!!!!!! " << LeftDepthRegionMean << endl;
-
+                        //float LeftDepth = 500;
+                        //float RightDepth = 600;
                         float LeftDepth = LeftDepthRegionMean;
                         float RightDepth = RightDepthRegionMean;
                         float DepthDifference = (RightDepth - LeftDepth);
@@ -894,6 +924,52 @@ RectIndex++;
                         cout << SecondAngleToMove << " Second Angle To Move" << endl;
                         cout << VisionTargetDistanceFromCenter << " VIsion Target Real Distance From Camera Center in Millimeters please wooork";
                         
+                          
+                          int iFirstAngleToMove = (int)((FirstAngleToMove * 100) + 0.5);
+                          iFirstAngleToMove = iFirstAngleToMove / 100;  
+                          
+                          int iControlPointDistanceFromCenter = (int)((ControlPointDistanceFromCenter * 100) + 0.5);
+                          iControlPointDistanceFromCenter = iControlPointDistanceFromCenter / 100;
+
+                          int iSecondAngleToMove = (int)((SecondAngleToMove * 100) + 0.5);
+                          iSecondAngleToMove = iSecondAngleToMove / 100;
+
+                          int iLeftDepth = (int)((LeftDepth * 100) + 0.5);
+                          iLeftDepth = iLeftDepth / 100;
+
+                          int iRightDepth = (int)((RightDepth * 100) + 0.5);
+                          iRightDepth = iRightDepth / 100;
+                          /*
+                          strcat(input,to_string(iFirstAngleToMove).c_str()) ;
+
+                          strcat(input," B ") ;
+
+                          strcat(input,to_string(iControlPointDistanceFromCenter).c_str()) ;
+
+                          strcat(input," C ") ;
+
+                          strcat(input,to_string(iSecondAngleToMove).c_str()) ;
+
+                          strcat(input," L ") ;
+
+                          strcat(input,to_string(iLeftDepth).c_str()) ;
+
+                          strcat(input," R ") ;
+
+                          
+
+
+                          strcat(input,to_string(iRightDepth).c_str()) ; */
+                          
+                          char a[5] = "A ";
+                          char b[5] = " B ";
+                          char c[5] = " C ";
+                          char l[5] = " L ";
+                          char r[5] = " R ";
+
+
+                          input = a + to_string(iFirstAngleToMove) + b + to_string(iControlPointDistanceFromCenter) + c + to_string(iSecondAngleToMove) + l + to_string(iLeftDepth) + r + to_string(iRightDepth);
+                        //cout << input << endl;
                         }
                         
                         }
@@ -903,10 +979,23 @@ RectIndex++;
             
             }      
         
-        
-        
+        if (alive && (ret = sock->read(buffer, message_buffer_size))) {
+
+            sock->write(input, strlen(input));
+
+            bzero(buffer, 512);
+
+
+
+        }
+        else 
+        {
+            usleep(1000 * 10);
+
+        }
+        //line(AutoAlignImage, Point(400, 600), Point(400 + (ControlPointDistanceXFromCenter / 5), 600 - (ControlPointDistanceYFromCenter / 5)), Scalar(0, 255, 255), 3, 8, 0);
         Point2f leftpoint; 
-        Point2f rightpoint;
+        Point2f rightpoint; 
 
         if(NumReflectivePairs != 0)
         {
