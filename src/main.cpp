@@ -11,22 +11,25 @@
 #include <librealsense2/rs_advanced_mode.hpp>
 #include <math.h>
 #include <librealsense2/rs.hpp>
-#include </home/bobtheblb/librealsense/wrappers/opencv/cv-helpers.hpp>
-#include </home/bobtheblb/Downloads/histogram.hpp>
+//#include </home/bobtheblb/librealsense/wrappers/opencv/cv-helpers.hpp>
+#include <histogram.hpp>
 #include <opencv2/core.hpp>
-#include </home/bobtheblb/Downloads/bgrd_frame_source.hpp>
-#include </home/bobtheblb/Downloads/bgrd_frame_source.cpp>
+#include <bgrd_frame_source.hpp>
 #include <map>
 #include <vector>
 #include <numeric>
 #include <string>
 #include <string.h>
-
+#include <string>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <sstream>
 #include <stdlib.h>
-
-//#include <simple_socket_client.hpp>
-#include <iostream>
-#include </home/bobtheblb/DuncansResources/utils/sockets/simple_socket_server.hpp>
 
 using namespace std;
 
@@ -42,11 +45,11 @@ using namespace cv;
 #define IDEALHEIGHTTOWIDTHRATIO 3
 #define ALLOWABLEASPECTRATIODIFFERENCE 1.2
 #define PI 3.14159
+#define PORT 5060
+#define MAXBUF 256
 
 
-
-
-int main()
+int main(int argc, char** argv)
 
 {
         int iLowH = 0;
@@ -55,24 +58,20 @@ int main()
 
         
         int iLowS = 121; 
-        int min_hist = 10;
-        int max_hist = 4000;
-        float percentile = 50.0 / 100.0;
+        
+        
+        int ConnectionCount = 0;
+
+        int backlog = 3, sends;
+
+
         
 
 
-        const size_t message_buffer_size = 512;
-
-
-
-
-
-
-
         int iHighS = 239;
+        //bool alive;
 
-
-        char input[250] = "A ";
+        
 
         /*
         float test = 10.112111;
@@ -81,20 +80,94 @@ int main()
         cout << FirstAngleToMove << endl; */
 
 
+        float FirstAngleToMove;
+        float ControlPointDistanceFromCenter;
+        float SecondAngleToMove;
+        float LeftDepth;
+        float RightDepth;
 
+        std::cout << "Uh Hi" << endl;
 
+        float iFirstAngleToMove;
+        float iControlPointDistanceFromCenter;
+        float iSecondAngleToMove;
+        float iLeftDepth;
+        float iRightDepth;
 
+        struct sockaddr_in servaddr;
 
+        struct sockaddr clientaddr;
 
+        int clientlen = sizeof(clientaddr);
 
+        int flags;
 
-
+        char buffer_rec[512] = {7};
 
         int iLowV = 0;
 
         int iHighV = 122;
         
+        char buffer_shutdown[MAXBUF] = "Goodnight";
+
+        memset(&servaddr, '0', sizeof(servaddr));
+
+        servaddr.sin_family = AF_INET;
+
+        servaddr.sin_port = htons(5060);
+
+        servaddr.sin_addr.s_addr = /*inet_addr("127.0.0.1");*/ INADDR_ANY;
+
+        int baccept, servsock;
+
+        servsock = socket(AF_INET, SOCK_STREAM, 0);
+
+        int clientsock;
+
+        int opt = 1;
+
+        bool breakout = 0;
        
+    if (servsock < 0)
+
+    {
+
+        std::cout << "Failed to create socket" << std::endl;
+
+    }
+
+    if (setsockopt(servsock, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)) < 0)
+
+    {
+
+        std::cout<<"Set Sock Opt Fail"<<std::endl;
+
+    }
+    
+    int binding = bind(servsock, (struct sockaddr *)&servaddr, sizeof(servaddr));
+
+    int list = listen(servsock, backlog);
+    std::cout<<"Binded: "<<binding<<std::endl;
+    std::cout << "Listening: " << list << std::endl;
+
+    baccept = accept(servsock, (struct sockaddr *)&clientaddr, (socklen_t* )&clientlen);
+
+    flags = fcntl(baccept, F_GETFL);
+
+    fcntl(baccept, F_SETFL, flags | O_NONBLOCK);
+
+
+    if (baccept < 0)
+
+    {
+
+        std::cout<<"Didn't Accept"<<std::endl;
+
+        //return 0;
+
+    }
+    std::cout << "Made it here yee yee" << endl;
+    //char Buffer[MAXBUF];
     //Contruct a pipeline which abstracts the device
 
     rs2::pipeline pipe;
@@ -147,65 +220,42 @@ auto sensor = profile.get_device().first<rs2::depth_sensor>();
 //   auto sensor = profile.get_device().first<rs2::depth_sensor>();
     rs2::frameset frames;
 
-    for(int i = 0; i < 100; i++)
+    for(int i = 0; i < 10; i++)
 
 //   while (true) {
 
     {
 
-        
+        cout << "sup " << endl;
         //Wait for all configured streams to produce a frame
         std::vector<rs2::sensor> sensors = dev.query_sensors();
         frames = pipe.wait_for_frames();
 
     }
-     namedWindow("HSV Control", WINDOW_AUTOSIZE );
-     namedWindow("Threshold Image", WINDOW_AUTOSIZE );
-     //namedWindow("Display Image", WINDOW_AUTOSIZE );   
-    
-    //Get each frame
-
-
- cvCreateTrackbar("LowH", "HSV Control", &iLowH, 179); //Hue (0 - 179)
-
- cvCreateTrackbar("HighH", "HSV Control", &iHighH, 179);
-
-
-
- cvCreateTrackbar("LowS", "HSV Control", &iLowS, 255); //Saturation (0 - 255)
-
- cvCreateTrackbar("HighS", "HSV Control", &iHighS, 255);
-
-
-
- cvCreateTrackbar("LowV", "HSV Control", &iLowV, 255); //FirstAngleToMove (0 - 255)
-
- cvCreateTrackbar("HighV", "HSV Control", &iHighV, 255);
+ 
     Mat Thresholdimg;
     //rs2::spatial_filter spat;
     //spat.set_option(RS2_OPTION_HOLES_FILL, 5);
     rs2::align align(RS2_STREAM_COLOR);
 
-    SimpleSocket* sock;
+    
     //auto leftdepth_hist = Histogram<unsigned short>(min_hist, max_hist);
     //auto rightdepth_hist = Histogram<unsigned short>(min_hist, max_hist);
-    sock = new SimpleSocketServer (5060);
-    char buffer[message_buffer_size] = {0};
+    
 
-    bool alive ;
+    
 
-    ssize_t ret ;
+    ssize_t ret;
 
-    auto leftdepthregionhistogram = Histogram<unsigned short>(200, 1000);
-    auto rightdepthregionhistogram = Histogram<unsigned short>(200, 1000);
+    //auto leftdepthregionhistogram = Histogram<unsigned short>(200, 1000);
+    //auto rightdepthregionhistogram = Histogram<unsigned short>(200, 1000);
     
     //dev.enable_stream( rs::stream::depth, SCREENWIDTH, SCREENHEIGHT, rs::format::z16, 60);
     while (true) {
-    alive = sock->keep_alive();
+    
 
-
-
-    cout << "left type " << endl;
+    
+    //cout << "left type " << endl;
     //cout << "right type " << &rightdepthregionhistogram << endl;
 
     auto data = pipe.wait_for_frames();
@@ -243,7 +293,7 @@ auto sensor = profile.get_device().first<rs2::depth_sensor>();
 
     //imshow("left mat", LeftDepthRegionMat);
     //imshow("right mat", RightDepthRegionMat);
-    imshow("depth mat", depth);
+    //imshow("depth mat", depth);
  
    
 
@@ -266,7 +316,7 @@ auto sensor = profile.get_device().first<rs2::depth_sensor>();
 
     //**********************************************************************
     
-    imshow("Threshold Image", Thresholdimg);
+    
     
     Point2f LeftRobot, RightRobot;
 
@@ -276,7 +326,7 @@ auto sensor = profile.get_device().first<rs2::depth_sensor>();
     RightRobot.y = 600;
 
     line(AutoAlignImage, LeftRobot, RightRobot, Scalar(0, 255, 255), 3, 8, 0);
-    imshow("Auto align image", AutoAlignImage);
+    
     Canny(Thresholdimg, canny_result, 128, 128);
     
     std::vector<std::vector<Point>> contours;
@@ -924,52 +974,7 @@ RectIndex++;
                         cout << SecondAngleToMove << " Second Angle To Move" << endl;
                         cout << VisionTargetDistanceFromCenter << " VIsion Target Real Distance From Camera Center in Millimeters please wooork";
                         
-                          
-                          int iFirstAngleToMove = (int)((FirstAngleToMove * 100) + 0.5);
-                          iFirstAngleToMove = iFirstAngleToMove / 100;  
-                          
-                          int iControlPointDistanceFromCenter = (int)((ControlPointDistanceFromCenter * 100) + 0.5);
-                          iControlPointDistanceFromCenter = iControlPointDistanceFromCenter / 100;
-
-                          int iSecondAngleToMove = (int)((SecondAngleToMove * 100) + 0.5);
-                          iSecondAngleToMove = iSecondAngleToMove / 100;
-
-                          int iLeftDepth = (int)((LeftDepth * 100) + 0.5);
-                          iLeftDepth = iLeftDepth / 100;
-
-                          int iRightDepth = (int)((RightDepth * 100) + 0.5);
-                          iRightDepth = iRightDepth / 100;
-                          /*
-                          strcat(input,to_string(iFirstAngleToMove).c_str()) ;
-
-                          strcat(input," B ") ;
-
-                          strcat(input,to_string(iControlPointDistanceFromCenter).c_str()) ;
-
-                          strcat(input," C ") ;
-
-                          strcat(input,to_string(iSecondAngleToMove).c_str()) ;
-
-                          strcat(input," L ") ;
-
-                          strcat(input,to_string(iLeftDepth).c_str()) ;
-
-                          strcat(input," R ") ;
-
-                          
-
-
-                          strcat(input,to_string(iRightDepth).c_str()) ; */
-                          
-                          char a[5] = "A ";
-                          char b[5] = " B ";
-                          char c[5] = " C ";
-                          char l[5] = " L ";
-                          char r[5] = " R ";
-
-
-                          input = a + to_string(iFirstAngleToMove) + b + to_string(iControlPointDistanceFromCenter) + c + to_string(iSecondAngleToMove) + l + to_string(iLeftDepth) + r + to_string(iRightDepth);
-                        //cout << input << endl;
+                        
                         }
                         
                         }
@@ -979,20 +984,7 @@ RectIndex++;
             
             }      
         
-        if (alive && (ret = sock->read(buffer, message_buffer_size))) {
-
-            sock->write(input, strlen(input));
-
-            bzero(buffer, 512);
-
-
-
-        }
-        else 
-        {
-            usleep(1000 * 10);
-
-        }
+        
         //line(AutoAlignImage, Point(400, 600), Point(400 + (ControlPointDistanceXFromCenter / 5), 600 - (ControlPointDistanceYFromCenter / 5)), Scalar(0, 255, 255), 3, 8, 0);
         Point2f leftpoint; 
         Point2f rightpoint; 
@@ -1021,22 +1013,151 @@ RectIndex++;
     rectangle(boundingbox, largest_rectangle, Scalar(0, 255, 0), 2);
     }
 
-    imshow("bounding boxes", boundingbox);
-   // cout << "got to level 20" << endl;
 
-
-    
-    imshow("Canny Result", canny_result);
     cout << "got to level 21" << endl;
-    imshow("Display Image", color);
+    
    
     cout << "running" << endl;
 
      waitKey(25);
 
     //cout << "running" << endl;
+                        
+                          FirstAngleToMove = 420.6924;
+                          ControlPointDistanceFromCenter = 69.42069;
+                          SecondAngleToMove = 555.5555;
+                          LeftDepth = 666.6;
+                          RightDepth = 999.99999;
 
+
+
+
+                          iFirstAngleToMove = (int)((FirstAngleToMove * 100) + 0.5);
+                          iFirstAngleToMove = (float)(iFirstAngleToMove / 100);  
+                          
+                          iControlPointDistanceFromCenter = (int)((ControlPointDistanceFromCenter * 100) + 0.5);
+                          iControlPointDistanceFromCenter = (float)iControlPointDistanceFromCenter / 100;
+
+                          iSecondAngleToMove = (int)((SecondAngleToMove * 100) + 0.5);
+                          iSecondAngleToMove = (float)iSecondAngleToMove / 100;
+
+                          iLeftDepth = (int)((LeftDepth * 100) + 0.5);
+                          iLeftDepth = (float)iLeftDepth / 100;
+
+                          iRightDepth = (int)((RightDepth * 100) + 0.5);
+                          iRightDepth = (float)iRightDepth / 100;
+          
+                        if(NumReflectivePairs == 0)
+                        {
+                            /*iFirstAngleToMove = 0;
+                            iControlPointDistanceFromCenter = 0;
+                            iSecondAngleToMove = 0;
+                            iLeftDepth = 0;
+                            iRightDepth = 0;*/
+                        }
+
+
+                        char Buffer[MAXBUF] = {0};
+                        cout << iFirstAngleToMove << " " << iSecondAngleToMove << endl;
+                         /* iFirstAngleToMove = 1;
+                          iControlPointDistanceFromCenter = 2;
+                          iSecondAngleToMove = 3;
+                          iLeftDepth = 4;
+                          iRightDepth = 5; */
+                        /*
+            strcat(Buffer," A ") ;
+
+            strcat(Buffer,to_string(iFirstAngleToMove).c_str()) ;
+
+            strcat(Buffer," B ") ;
+
+            strcat(Buffer,to_string(iControlPointDistanceFromCenter).c_str()) ;
+
+            strcat(Buffer," C ") ;
+
+            strcat(Buffer,to_string(iSecondAngleToMove).c_str()) ;
+
+            strcat(Buffer," L ") ;
+
+            strcat(Buffer, to_string(iLeftDepth).c_str()) ;
+
+            strcat(Buffer," R ") ;
+
+            strcat(Buffer, to_string(iRightDepth).c_str()) ;
+
+            strcat(Buffer," Z ") ;
+
+            strcat(Buffer, to_string(ConnectionCount).c_str()) ;
+
+            strcat(Buffer,"\0") ;       */   
+            
+            sprintf(Buffer, "A %f B %f C %f L %f R %f\0", iFirstAngleToMove, iControlPointDistanceFromCenter, iSecondAngleToMove, iLeftDepth, iRightDepth);
+
+            cout << "This is the buffer " << Buffer << std::endl;           
+                        //int writing = sock->write(input, strlen(input));
+       if (baccept > 0)
+
+        {
+
+            int sending = send(baccept , Buffer , sizeof(Buffer), 0 );
+
+            //std::cout<<"Sending: "<<sending<<std::endl;
+
+            //std::cout<<"What it sent: "<<buffer_data<<std::endl;
+
+            ConnectionCount ++;
+
+            //std::cout<<"Loop: "<<loop<<std::endl;
+
+            //usleep(1000 * 30);
+
+        } 
+                        
+    
+
+
+    if( (char)27 == waitKey(1))
+    {
+        
+        
+        return -1;
+        
+    }
+
+    if(argc > 0)
+    {
+        namedWindow("HSV Control", WINDOW_AUTOSIZE );
+        namedWindow("Threshold Image", WINDOW_AUTOSIZE );
+     //namedWindow("Display Image", WINDOW_AUTOSIZE );   
+    
+    //Get each frame
+
+
+         cvCreateTrackbar("LowH", "HSV Control", &iLowH, 179); //Hue (0 - 179)
+
+         cvCreateTrackbar("HighH", "HSV Control", &iHighH, 179);
+
+
+
+         cvCreateTrackbar("LowS", "HSV Control", &iLowS, 255); //Saturation (0 - 255)
+
+         cvCreateTrackbar("HighS", "HSV Control", &iHighS, 255);
+
+
+
+         cvCreateTrackbar("LowV", "HSV Control", &iLowV, 255); //FirstAngleToMove (0 - 255)
+
+         cvCreateTrackbar("HighV", "HSV Control", &iHighV, 255);
+        imshow("bounding boxes", boundingbox);
+   // cout << "got to level 20" << endl;
+        imshow("Threshold Image", Thresholdimg);
+        imshow("Auto align image", AutoAlignImage);
+    
+        imshow("Canny Result", canny_result);
+        imshow("Display Image", color);
+
+    }
 }
-
+    
     return 0;
 }
