@@ -127,11 +127,51 @@ int main(int argc, char** argv)
         int opt = 1;
 
         bool breakout = 0;
-    
-        
-
-
        
+        rs2::pipeline pipe;
+        rs2::config cfg;
+
+        
+        // Create a context object. This object owns the handles to all connected realsense devices.
+        // The returned object should be released with rs2_delete_context(...)
+        ////rs2_context* ctx = rs2_create_context(RS2_API_VERSION, &e);
+        rs2::context ctx;
+        auto devices = ctx.query_devices();
+        size_t device_count = devices.size();
+        
+        if (!device_count)
+        {
+            cout <<"No device detected. Is it plugged in?\n";
+            return EXIT_SUCCESS;
+            
+        }
+        auto profile = pipe.start(cfg);
+// Get the first connected device
+//auto dev = devices[0];
+//std::ifstream t("/home/bobtheblb/DuncansResources/demos/epicgamermoments/realsensesettings.json");
+//rs2::device dev = pipe.get_active_profile().get_device();
+        rs400::advanced_mode dev = profile.get_device();
+//advanced_mode_dev.load_json(str);
+// Enter advanced mode
+   if (dev.is<rs400::advanced_mode>())
+   {
+       // Get the advanced mode functionality
+       auto advanced_mode_dev = dev.as<rs400::advanced_mode>();
+
+       // Load and configure .json file to device
+       ifstream t("/home/bobtheblb/DuncansResources/demos/epicgamermoments/realsensesettings.json");
+       string str((istreambuf_iterator<char>(t)), istreambuf_iterator<char>());
+       advanced_mode_dev.load_json(str);
+       cfg.enable_stream( rs2_stream::RS2_STREAM_DEPTH, SCREENWIDTH, SCREENHEIGHT, rs2_format::RS2_FORMAT_Z16, 30 );
+        
+       cfg.enable_stream(rs2_stream::RS2_STREAM_COLOR, SCREENWIDTH, SCREENHEIGHT, rs2_format::RS2_FORMAT_BGR8, 30);
+   }
+   else
+   {
+       cout << "Current device doesn't support advanced-mode!\n";
+       return EXIT_FAILURE;
+   }
+
     if (servsock < 0)
 
     {
@@ -174,40 +214,7 @@ int main(int argc, char** argv)
     //char Buffer[MAXBUF];
     //Contruct a pipeline which abstracts the device
 
-    // Create a context object. This object owns the handles to all connected realsense devices.
-    // The returned object should be released with rs2_delete_context(...)
-    ////rs2_context* ctx = rs2_create_context(RS2_API_VERSION, &e);
-  rs2::context ctx;
-auto devices = ctx.query_devices();
-size_t device_count = devices.size();
-if (!device_count)
-{
-    cout <<"No device detected. Is it plugged in?\n";
-    return EXIT_SUCCESS;
-}
 
-// Get the first connected device
-//auto dev = devices[0];
-//std::ifstream t("/home/bobtheblb/DuncansResources/demos/epicgamermoments/realsensesettings.json");
-//rs2::device dev = pipe.get_active_profile().get_device();
-rs400::advanced_mode dev = profile.get_device();
-//advanced_mode_dev.load_json(str);
-// Enter advanced mode
-   if (dev.is<rs400::advanced_mode>())
-   {
-       // Get the advanced mode functionality
-       auto advanced_mode_dev = dev.as<rs400::advanced_mode>();
-
-       // Load and configure .json file to device
-       ifstream t("/home/bobtheblb/DuncansResources/demos/epicgamermoments/realsensesettings.json");
-       string str((istreambuf_iterator<char>(t)), istreambuf_iterator<char>());
-       advanced_mode_dev.load_json(str);
-   }
-   else
-   {
-       cout << "Current device doesn't support advanced-mode!\n";
-       return EXIT_FAILURE;
-   }
 //std::string(i) = "High Density";
 auto sensor = profile.get_device().first<rs2::depth_sensor>();
 //rs2::frame depth = data.get_depth_frame();
