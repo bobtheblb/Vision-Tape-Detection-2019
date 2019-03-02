@@ -127,6 +127,10 @@ int main(int argc, char** argv)
         int opt = 1;
 
         bool breakout = 0;
+    
+        
+
+
        
     if (servsock < 0)
 
@@ -170,12 +174,6 @@ int main(int argc, char** argv)
     //char Buffer[MAXBUF];
     //Contruct a pipeline which abstracts the device
 
-    rs2::pipeline pipe;
-    rs2::config cfg;
-    cfg.enable_stream( rs2_stream::RS2_STREAM_DEPTH, SCREENWIDTH, SCREENHEIGHT, rs2_format::RS2_FORMAT_Z16, 30 );
-    
-    cfg.enable_stream(rs2_stream::RS2_STREAM_COLOR, SCREENWIDTH, SCREENHEIGHT, rs2_format::RS2_FORMAT_BGR8, 30);
-    auto profile = pipe.start(cfg);
     // Create a context object. This object owns the handles to all connected realsense devices.
     // The returned object should be released with rs2_delete_context(...)
     ////rs2_context* ctx = rs2_create_context(RS2_API_VERSION, &e);
