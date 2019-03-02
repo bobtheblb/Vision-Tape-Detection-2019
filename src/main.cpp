@@ -1,6 +1,6 @@
 // include the librealsense C++ header file
-
-
+#include <simple_socket_server.hpp>
+#include <simple_socket.hpp>
 #include <librealsense2/rs_advanced_mode.h>
 #include <stdio.h>
 #include <math.h>
@@ -38,8 +38,8 @@ using namespace cv;
 #define MAXCONTOURS 50
 #define IDEALSPACINGTOWIDTHRATIO 4.0
 #define ALLOWABLESPACINGPERCENTDIFFERENCE 60
-#define SCREENWIDTH 1280
-#define SCREENHEIGHT 720
+#define SCREENWIDTH 640
+#define SCREENHEIGHT 480
 #define CENTERSCREENX SCREENWIDTH/2
 #define CENTERSCREENY SCREENHEIGHT/2
 #define IDEALHEIGHTTOWIDTHRATIO 3
@@ -62,11 +62,13 @@ int main(int argc, char** argv)
         
         int ConnectionCount = 0;
 
-        int backlog = 3, sends;
 
-
+        const size_t MaxBufferSize = 60;
+        char Buffer[MaxBufferSize] = {0};
         
+        SimpleSocket* servsock;
 
+        servsock = new SimpleSocketServer(PORT);
 
         int iHighS = 239;
         //bool alive;
@@ -118,11 +120,11 @@ int main(int argc, char** argv)
 
         servaddr.sin_addr.s_addr = /*inet_addr("127.0.0.1");*/ INADDR_ANY;
 
-        int baccept, servsock;
+        
 
-        servsock = socket(AF_INET, SOCK_STREAM, 0);
+        //servsock = socket(AF_INET, SOCK_STREAM, 0);
 
-        int clientsock;
+        
 
         int opt = 1;
 
@@ -162,9 +164,6 @@ int main(int argc, char** argv)
        ifstream t("/home/bobtheblb/DuncansResources/demos/epicgamermoments/realsensesettings.json");
        string str((istreambuf_iterator<char>(t)), istreambuf_iterator<char>());
        advanced_mode_dev.load_json(str);
-       cfg.enable_stream( rs2_stream::RS2_STREAM_DEPTH, SCREENWIDTH, SCREENHEIGHT, rs2_format::RS2_FORMAT_Z16, 30 );
-        
-       cfg.enable_stream(rs2_stream::RS2_STREAM_COLOR, SCREENWIDTH, SCREENHEIGHT, rs2_format::RS2_FORMAT_BGR8, 30);
    }
    else
    {
@@ -180,36 +179,9 @@ int main(int argc, char** argv)
 
     }
 
-    if (setsockopt(servsock, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)) < 0)
-
-    {
-
-        std::cout<<"Set Sock Opt Fail"<<std::endl;
-
-    }
     
-    int binding = bind(servsock, (struct sockaddr *)&servaddr, sizeof(servaddr));
-
-    int list = listen(servsock, backlog);
-    std::cout<<"Binded: "<<binding<<std::endl;
-    std::cout << "Listening: " << list << std::endl;
-
-    baccept = accept(servsock, (struct sockaddr *)&clientaddr, (socklen_t* )&clientlen);
-
-    flags = fcntl(baccept, F_GETFL);
-
-    fcntl(baccept, F_SETFL, flags | O_NONBLOCK);
-
-
-    if (baccept < 0)
-
-    {
-
-        std::cout<<"Didn't Accept"<<std::endl;
-
-        //return 0;
-
-    }
+    
+     
     std::cout << "Made it here yee yee" << endl;
     //char Buffer[MAXBUF];
     //Contruct a pipeline which abstracts the device
@@ -243,7 +215,10 @@ auto sensor = profile.get_device().first<rs2::depth_sensor>();
     //spat.set_option(RS2_OPTION_HOLES_FILL, 5);
     rs2::align align(RS2_STREAM_COLOR);
 
-    
+    cfg.enable_stream( rs2_stream::RS2_STREAM_DEPTH, SCREENWIDTH, SCREENHEIGHT, rs2_format::RS2_FORMAT_Z16,  30);
+        
+    cfg.enable_stream(rs2_stream::RS2_STREAM_COLOR, SCREENWIDTH, SCREENHEIGHT, rs2_format::RS2_FORMAT_BGR8, 30);
+
     //auto leftdepth_hist = Histogram<unsigned short>(min_hist, max_hist);
     //auto rightdepth_hist = Histogram<unsigned short>(min_hist, max_hist);
     
@@ -257,7 +232,7 @@ auto sensor = profile.get_device().first<rs2::depth_sensor>();
     
     //dev.enable_stream( rs::stream::depth, SCREENWIDTH, SCREENHEIGHT, rs::format::z16, 60);
     while (true) {
-    
+    servsock->re_establish();
 
     
     //cout << "left type " << endl;
@@ -1095,28 +1070,23 @@ RectIndex++;
             strcat(Buffer, to_string(ConnectionCount).c_str()) ;
 
             strcat(Buffer,"\0") ;       */   
-            
-            sprintf(Buffer, "A %f B %f C %f L %f R %f\0", iFirstAngleToMove, iControlPointDistanceFromCenter, iSecondAngleToMove, iLeftDepth, iRightDepth);
+            ConnectionCount++;
+            sprintf(Buffer, "A %f B %f C %f L %f R %f D %i\0", iFirstAngleToMove, iControlPointDistanceFromCenter, iSecondAngleToMove, iLeftDepth, iRightDepth, ConnectionCount);
 
             cout << "This is the buffer " << Buffer << std::endl;           
                         //int writing = sock->write(input, strlen(input));
-       if (baccept > 0)
-
+       
+        if(servsock->write(Buffer, MaxBufferSize))
         {
+            cout << "Sent Info " << Buffer << endl;
+            Buffer[MaxBufferSize] = {0};
+        }
+        else
+        {
+            cout << "Error writing info to client" << endl;
+        }
 
-            int sending = send(baccept , Buffer , sizeof(Buffer), 0 );
-
-            //std::cout<<"Sending: "<<sending<<std::endl;
-
-            //std::cout<<"What it sent: "<<buffer_data<<std::endl;
-
-            ConnectionCount ++;
-
-            //std::cout<<"Loop: "<<loop<<std::endl;
-
-            //usleep(1000 * 30);
-
-        } 
+        
                         
     
 
