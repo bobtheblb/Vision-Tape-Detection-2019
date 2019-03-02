@@ -38,8 +38,8 @@ using namespace cv;
 #define MAXCONTOURS 50
 #define IDEALSPACINGTOWIDTHRATIO 4.0
 #define ALLOWABLESPACINGPERCENTDIFFERENCE 60
-#define SCREENWIDTH 640
-#define SCREENHEIGHT 480
+#define SCREENWIDTH 1280
+#define SCREENHEIGHT 720
 #define CENTERSCREENX SCREENWIDTH/2
 #define CENTERSCREENY SCREENHEIGHT/2
 #define IDEALHEIGHTTOWIDTHRATIO 3
@@ -132,8 +132,10 @@ int main(int argc, char** argv)
        
         rs2::pipeline pipe;
         rs2::config cfg;
-
+        cfg.enable_stream( rs2_stream::RS2_STREAM_DEPTH, SCREENWIDTH, SCREENHEIGHT, rs2_format::RS2_FORMAT_Z16,  30);
         
+        cfg.enable_stream(rs2_stream::RS2_STREAM_COLOR, SCREENWIDTH, SCREENHEIGHT, rs2_format::RS2_FORMAT_BGR8, 30);
+        auto profile = pipe.start(cfg);
         // Create a context object. This object owns the handles to all connected realsense devices.
         // The returned object should be released with rs2_delete_context(...)
         ////rs2_context* ctx = rs2_create_context(RS2_API_VERSION, &e);
@@ -147,7 +149,7 @@ int main(int argc, char** argv)
             return EXIT_SUCCESS;
             
         }
-        auto profile = pipe.start(cfg);
+        
 // Get the first connected device
 //auto dev = devices[0];
 //std::ifstream t("/home/bobtheblb/DuncansResources/demos/epicgamermoments/realsensesettings.json");
@@ -215,9 +217,7 @@ auto sensor = profile.get_device().first<rs2::depth_sensor>();
     //spat.set_option(RS2_OPTION_HOLES_FILL, 5);
     rs2::align align(RS2_STREAM_COLOR);
 
-    cfg.enable_stream( rs2_stream::RS2_STREAM_DEPTH, SCREENWIDTH, SCREENHEIGHT, rs2_format::RS2_FORMAT_Z16,  30);
-        
-    cfg.enable_stream(rs2_stream::RS2_STREAM_COLOR, SCREENWIDTH, SCREENHEIGHT, rs2_format::RS2_FORMAT_BGR8, 30);
+
 
     //auto leftdepth_hist = Histogram<unsigned short>(min_hist, max_hist);
     //auto rightdepth_hist = Histogram<unsigned short>(min_hist, max_hist);
