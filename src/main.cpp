@@ -96,6 +96,7 @@ int main(int argc, char** argv)
         float iLeftDepth;
         float iRightDepth;
 
+
         struct sockaddr_in servaddr;
 
         struct sockaddr clientaddr;
@@ -698,7 +699,7 @@ RectIndex++;
         float ClosestPairDistance = ReflectiveTapePairs[0].TapePairCenterX;
         
 //***********************************************************
-//START LOOP FIND CLOSEST TO CENTER
+//START LOOP FIND CLOSEST TO CENTER+
         int RectIndex;
 
         for (RectIndex = 0; RectIndex < NumReflectivePairs; RectIndex++)
@@ -706,7 +707,7 @@ RectIndex++;
             float TapePairDistanceFromCenter = abs(ReflectiveTapePairs[RectIndex].TapePairCenterX - CENTERSCREENX);
             if (ClosestPairDistance > TapePairDistanceFromCenter)
             {
-                ClosestPairDistance = TapePairDistanceFromCenter;
+                ClosestPairDistance = TapePairDistanceFromCenter; 
                 int CenterPairIndex = RectIndex; 
                 RealPairDistance = ReflectiveTapePairs[RectIndex].TapePairCenterX - CENTERSCREENX;
             }
@@ -912,8 +913,8 @@ RectIndex++;
                         cout << "Left region mean pls work!!!!!!! " << LeftDepthRegionMean << endl;
                         //float LeftDepth = 500;
                         //float RightDepth = 600;
-                        float LeftDepth = LeftDepthRegionMean;
-                        float RightDepth = RightDepthRegionMean;
+                        LeftDepth = LeftDepthRegionMean;
+                        RightDepth = RightDepthRegionMean;
                         float DepthDifference = (RightDepth - LeftDepth);
                         float CenterDepth = (LeftDepth + RightDepth) / 2;
 
@@ -955,6 +956,14 @@ RectIndex++;
                         cout << VisionTargetDistanceFromCenter << " VIsion Target Real Distance From Camera Center in Millimeters please wooork";
                         
                         
+                        }
+                        else
+                        {
+                            FirstAngleToMove = 0;
+                            SecondAngleToMove = 0;
+                            ControlPointDistanceFromCenter = 0;
+                            LeftDepth = 0;
+                            RightDepth = 0;
                         }
                         
                         }
@@ -1003,12 +1012,7 @@ RectIndex++;
 
     //cout << "running" << endl;
                         
-                          FirstAngleToMove = 420.6924;
-                          ControlPointDistanceFromCenter = 69.42069;
-                          SecondAngleToMove = 555.5555;
-                          LeftDepth = 666.6;
-                          RightDepth = 999.99999;
-
+                          
 
 
 
@@ -1101,6 +1105,7 @@ RectIndex++;
 
     if(argc > 0)
     {
+        
         namedWindow("HSV Control", WINDOW_AUTOSIZE );
         namedWindow("Threshold Image", WINDOW_AUTOSIZE );
      //namedWindow("Display Image", WINDOW_AUTOSIZE );   
